@@ -92,10 +92,11 @@ contract ContractAgreement is HashTokenTransfer {
     struct contractAgreement {
         uint hashtokenId;
         address buyer;
-        uint seller; 
+        address seller; 
         uint price;
         uint startTime;
         uint finishTime;
+        uint onlineTime;
         enum State {Created, Signed, Inactive};
         State public state;
         
@@ -107,15 +108,35 @@ contract ContractAgreement is HashTokenTransfer {
     function createAgreement (uint _hashtokenId, uint _price, uint _finishtime) public {
         require(msg.sender == hashtokenToOwner[_hashtokenId]);
         
-        uint idAgreement = contractagreements.push(contractAgreement())
+        uint idAgreement = contractagreements.push(contractAgreement(_hashtokenId, 0x0, msg.sender, _price, 0, _finishtime, Created)) - 1;
+        
+        idcontractAgreement[idAgreement] = contractAgreement(_hashtokenId, 0x0, msg.sender, _price, 0, _finishtime, Created);
         
     }
     
+    function abortAgreement(uint _idAgreement) public {
+        require(msg.sender == idcontractAgreement[_idAgreement].seller);
+        require(idcontractAgreement[_idAgreement].state == Created);
+        
+        idcontractAgreement[_idAgreement].state == Inactive;
+        
+    }
+    
+    function confirmAgreement(uint _idAgreement) public payable {
+        require(idcontractAgreement[_idAgreement].state == Created);
+        require(msg.value == idcontractAgreement[_idAgreement].price);
+        
+        idcontractAgreement[_idAgreement].buyer = msg.sender;
+        idcontractAgreement[_idAgreement].state = Signed;
+        idcontractAgreement[_idAgreement].startTime = now;
+        
+    }
+    
+    function dailyPayment 
     
     
+  
+
+   
 }
 
-
-
-
-    
