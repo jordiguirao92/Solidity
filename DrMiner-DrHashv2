@@ -1,0 +1,57 @@
+pragma solidity ^0.4.24;
+
+
+contract ContractAgreement {
+
+ address private drhashAddress;
+
+ struct contractAgreement {
+     address seller;
+     address buyer;
+     uint hashrate;
+     uint duration;
+     uint price;
+     uint fee;
+     uint startTime;
+     uint finishTime;
+     uint paymentInterval; 
+     bool isActive;
+
+ }
+  
+  contractAgreement[] public contractAgreements;
+  mapping (uint => address) public buyerAgreementsOwner;
+  mapping (address => uint) public buyerAgreementsCount;
+
+  mapping (uint => address) public sellerAgreementsOwner;
+  mapping (address => uint) public sellerAgreementsCount;
+
+
+ function createAgreement (address _seller, address _buyer, uint _hashrate, uint _duration, uint _price) public payable {
+     
+     require(msg.value >= _price *1 ether);
+     
+     uint feedr = _price *0.01 ether;
+   
+     uint idAgreement = contractAgreements.push(contractAgreement(_seller, _buyer, _hashrate, _duration, _price *1 ether, feedr, now, now + _duration *1 days, 1, true));
+
+     buyerAgreementsOwner[idAgreement] = _buyer;
+     buyerAgreementsCount[_buyer]++;
+     sellerAgreementsOwner[idAgreement] = _seller;
+     sellerAgreementsCount[_seller]++;
+
+ }
+  
+ function drHashPaymentComision(uint _idAgreement) private {
+
+     drhashAddress.transfer(contractAgreements[_idAgreement].fee);
+   
+  }
+
+ function setDrHasAddress(address _newaddress) private { //onlyowner
+     drhashAddress = _newaddress; 
+ }
+   
+
+
+}
