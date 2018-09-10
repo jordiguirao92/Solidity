@@ -93,10 +93,15 @@ contract ContractAgreement is HashTokenTransfer {
         uint hashtokenId;
         address buyer;
         address seller; 
-        uint price;
+        uint price; //sumar el 1% de comision.
+        uint totalPrice;
+        uint drHashComision;
+        uint dailypay;
         uint startTime;
         uint finishTime;
         uint onlineTime;
+        uint paymentInterval;
+        uint latestPaidTime; //cuando se crea el contrato poner este valor a now
         enum State {Created, Signed, Inactive};
         State public state;
         
@@ -108,9 +113,13 @@ contract ContractAgreement is HashTokenTransfer {
     function createAgreement (uint _hashtokenId, uint _price, uint _finishtime) public {
         require(msg.sender == hashtokenToOwner[_hashtokenId]);
         
-        uint idAgreement = contractagreements.push(contractAgreement(_hashtokenId, 0x0, msg.sender, _price, 0, _finishtime, Created)) - 1;
+        totalPrice = _price * 1.01;
+        drHashComision = totalPrice - _price; 
+
+
+        uint idAgreement = contractagreements.push(contractAgreement(_hashtokenId, 0x0, msg.sender, _price, totalPrice, drHashComision, 0, _finishtime, 1 days, Created)) - 1; //revisar
         
-        idcontractAgreement[idAgreement] = contractAgreement(_hashtokenId, 0x0, msg.sender, _price, 0, _finishtime, Created);
+        idcontractAgreement[idAgreement] = contractAgreement(_hashtokenId, 0x0, msg.sender, _price, 0, _finishtime, 1 days, Created);
         
     }
     
@@ -129,14 +138,60 @@ contract ContractAgreement is HashTokenTransfer {
         idcontractAgreement[_idAgreement].buyer = msg.sender;
         idcontractAgreement[_idAgreement].state = Signed;
         idcontractAgreement[_idAgreement].startTime = now;
+
+        drHashPaymentComision(_idAgreement);
+
+    }
+
+    function cancelAgreement(uint _idAgreement) public {
+
+    }
+
+
+    function statusAgreement(uint _idAgreement) public returns(string state, uint startTime, uint finishTime, uint paymentInterval, uint unPaidTime) {
+        require(msg.sender == idcontractAgreement[_idAgreement].seller || idcontractAgreement[_idAgreement].buyer);
+         
+         state = idcontractAgreement[_idAgreement].state;
+         startTime = idcontractAgreement[_idAgreement].startTime;
+         finishTime = idcontractAgreement[_idAgreement].finishTime;
+         paymentInterval = idcontractAgreement[_idAgreement].paymentInterval;
+         unPaidTime = now - idcontractAgreement[_idAgreement].latestPaidTime;
+
+
+    }
+
+
+    function drHashPaymentComision(_idAgreement) private {
+        address drhash = 0x12343434;
+        uint drComision = idcontractAgreement[_idAgreement].drHashComision;
+
+        drhash.transfer(drComision);
+
+    } 
+
+
+    
+    function dailyPayment(uint _idAgreement, uint _onlineTime, uint _actualDay) public { //El onlineTime diario nos lo ha de dar software de mineria.
+         //require(msg.sender == idcontractAgreement[_idAgreement].seller || idcontractAgreement[_idAgreement].buyer);
+         //require(idcontractAgreement[_idAgreement].state == Created);
+         //require(now >= idcontractAgreement[_idAgreement].startTime + 1 days);
+
+      for(uint i = 0; i < idcontractAgreement.length; i++) {
+        if(idcontractAgreement[i].state == Created && idcontractAgreement[i].latestPaidTime + idcontractAgreement[i].paymentInterval < now) {
+
+            if(idcontractAgreement[i].onlineTime == 24){
+                idcontractAgreement[i].seller.transfer(idcontractAgreement[i].dailyPay);
+            }
+            else {
+                idcontractAgreement[i].seller.transfer(mul(_onlineTime,div(idcontractAgreement[i].dailyPay,24))) //Entrada del parametro _onlinetime???
+
+            }
         
+             }
+         }
+
+
+
     }
     
-    function dailyPayment 
     
-    
-  
-
-   
-}
-
