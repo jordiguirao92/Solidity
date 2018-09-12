@@ -17,6 +17,8 @@ contract ContractAgreement {
      uint finishTime;
      uint paymentInterval; 
      uint dailyPayment;
+     uint totalPayed;
+     uint totalReturned:
      uint latestPaidTime;
      bool isActive; //Indica si el contracto esta activo o a finalizado.
      bool feePayment; //True que si se ha pagado. False que no se ha pagado.
@@ -24,6 +26,8 @@ contract ContractAgreement {
  }
   
   contractAgreement[] public contractAgreements;
+ //mapping (uint => contractAgreement) public idcontractAgreements;
+
   mapping (uint => address) public buyerAgreementsOwner;
   mapping (address => uint) public buyerAgreementsCount;
 
@@ -39,8 +43,10 @@ contract ContractAgreement {
      uint feedr = msg.value * drhashFee ether; //revisar tema del ether
      uint daypayment = (msg.value - feedr)/_duration; 
    
-     uint idAgreement = contractAgreements.push(contractAgreement(_seller, _buyer, _hashrate, _duration, _price *1 ether, feedr, now, now + _duration *1 days, 1, daypayment, now, true, false));
+     uint idAgreement = contractAgreements.push(contractAgreement(_seller, _buyer, _hashrate, _duration, _price *1 ether, feedr, now, now + _duration *1 days, 1, daypayment, 0, 0, now, true, false));
 
+     //revisar!!!!
+     //idcontractAgreements[idAgreement] = contractAgreement(_seller, _buyer, _hashrate, _duration, _price *1 ether, feedr, now, now + _duration *1 days, 1, daypayment, 0, 0, now, true, false);
      buyerAgreementsOwner[idAgreement] = _buyer;
      buyerAgreementsCount[_buyer]++;
      sellerAgreementsOwner[idAgreement] = _seller;
@@ -87,14 +93,21 @@ contract ContractAgreement {
    
   }
 
+
  function cancelAgreement(uint _idAgreement) public {
-     require(msg.sender == idcontractAgreement[_idAgreement].seller || idcontractAgreement[_idAgreement].buyer || owner);
+     require(msg.sender == contractAgreements[_idAgreement].seller || contractAgreements[_idAgreement].buyer || owner);
 
      contractAgreements[_idAgreement].isActive = false;
 
-
+     //Definir logica de devolver dinero.
 
  }
+   //ACABAR!!
+ function statusAgreement(uint _idAgreement) public {
+     require(msg.sender == contractAgreements[_idAgreement].seller || contractAgreements[_idAgreement].buyer || owner);
+
+ }
+
 
 
   //Revisar.
@@ -105,14 +118,30 @@ contract ContractAgreement {
 
   }
 
+
+  function updateTotalPayed(uint _idAgreement, uint _amountPayed) private {
+
+      contractAgreements[_idAgreement].totalPayed += _amountPayed;
+  }
+
+  function updateTotalReturned(uint _idAgreement, uint _amountReturned) private {
+
+      contractAgreements[_idAgreement].totalReturned += _amountPayed;
+
+  }
+
   function dailyPayment(uint _idAgreement, uint _onlineTime) public { 
      require(contractAgreements[_idAgreement].isActive == true);
 
-     if(now >= contractAgreements[_idAgreement].latestPaidTime + contractAgreements[_idAgreement].paymentInterval && this.balance >= contractAgreements[_idAgreement].dailyPayment){
+     if(now >= contractAgreements[_idAgreement].latestPaidTime + contractAgreements[_idAgreement].paymentInterval && now <= contractAgreements[_idAgreement].finishTime && this.balance >= contractAgreements[_idAgreement].dailyPayment){
 
          if(_onlineTime == 24) {
-             contractAgreements[_idAgreement].seller.transfer(contractAgreements[_idAgreement].dailyPayment);
+             uint totalPayment = contractAgreements[_idAgreement].dailyPayment;
+             contractAgreements[_idAgreement].seller.transfer(totalPayment);
+
              updateLatestPaidTime(_idAgreement);
+             updateTotalPayed(_idAgreement, totalPayment);
+             updateTotalReturned(_idAgreement, 0)
          } 
          else {
              uint sellerPayment = mul(_onlineTime, div(contractAgreements[_idAgreement].dailyPayment,24));
@@ -122,6 +151,8 @@ contract ContractAgreement {
              contractAgreements[_idAgreement].buyer.transfer(buyerPayment);
 
              updateLatestPaidTime(_idAgreement)
+             updateTotalPayed(_idAgreement, sellerPayment);
+             updateTotalReturned(_idAgreement, sellerPayment);
              
          }
      }
