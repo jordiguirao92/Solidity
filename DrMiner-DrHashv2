@@ -3,7 +3,8 @@ pragma solidity ^0.4.24;
 
 contract ContractAgreement {
 
- address private drhashAddress;
+ address drhashAddress;
+ uint drhashFee;
 
  struct contractAgreement {
      address seller;
@@ -15,7 +16,10 @@ contract ContractAgreement {
      uint startTime;
      uint finishTime;
      uint paymentInterval; 
-     bool isActive;
+     uint dailyPayment;
+     uint latestPaidTime;
+     bool isActive; //Indica si el contracto esta activo o a finalizado.
+     bool feePayment; //True que si se ha pagado. False que no se ha pagado.
 
  }
   
@@ -31,9 +35,11 @@ contract ContractAgreement {
      
      require(msg.value >= _price *1 ether);
      
-     uint feedr = _price *0.01 ether;
+     
+     uint feedr = msg.value * drhashFee ether; //revisar tema del ether
+     uint daypayment = (msg.value - feedr)/_duration; 
    
-     uint idAgreement = contractAgreements.push(contractAgreement(_seller, _buyer, _hashrate, _duration, _price *1 ether, feedr, now, now + _duration *1 days, 1, true));
+     uint idAgreement = contractAgreements.push(contractAgreement(_seller, _buyer, _hashrate, _duration, _price *1 ether, feedr, now, now + _duration *1 days, 1, daypayment, now, true, false));
 
      buyerAgreementsOwner[idAgreement] = _buyer;
      buyerAgreementsCount[_buyer]++;
@@ -41,17 +47,88 @@ contract ContractAgreement {
      sellerAgreementsCount[_seller]++;
 
  }
-  
- function drHashPaymentComision(uint _idAgreement) private {
+
+ function smartcontractBalance() public returns(uint _balance) { //onlyowner
+   return this.balance;
+ }
+
+ function setDrHashFee(uint _newfee) public { //onlyowner
+   drHashFee = _newfee;
+ }
+
+
+ function setDrHasAddress(address _newaddress) public{ //onlyowner
+     drhashAddress = _newaddress; 
+ }
+
+
+  //Funcion para cobrar diariamento comision de un solo contrato.
+
+ function drHashPaymentComision(uint _idAgreement) public { //onlyowner
 
      drhashAddress.transfer(contractAgreements[_idAgreement].fee);
+     contractAgreements[_idAgreement].feePayment = true;
+  }
+
+
+  //Funcion para cobrar diariamente de todos los contratos realizados. 
+
+  function drHashPaymentComision() public { //onlyowner
+
+    for(uint i = 0; i < contractAgreements.length; i++) {
+        if(contractAgreements[i].feePayment == false) {
+            drhashAddress.transfer(contractAgreements[i].fee);
+            contractAgreements[_idAgreement].feePayment = true;
+        }
+        else {
+            //emitir evento, de que ese contrato ya ha pagado.
+        }
+    }
    
   }
 
- function setDrHasAddress(address _newaddress) private { //onlyowner
-     drhashAddress = _newaddress; 
+ function cancelAgreement(uint _idAgreement) public {
+     require(msg.sender == idcontractAgreement[_idAgreement].seller || idcontractAgreement[_idAgreement].buyer || owner);
+
+     contractAgreements[_idAgreement].isActive = false;
+
+
+
  }
-   
+
+
+  //Revisar.
+
+  function updateLatestPaidTime(uint _idAgreement) private {
+      
+      contractAgreements[_idAgreement].latestPaidTime = now;
+
+  }
+
+  function dailyPayment(uint _idAgreement, uint _onlineTime) public { 
+     require(contractAgreements[_idAgreement].isActive == true);
+
+     if(now >= contractAgreements[_idAgreement].latestPaidTime + contractAgreements[_idAgreement].paymentInterval && this.balance >= contractAgreements[_idAgreement].dailyPayment){
+
+         if(_onlineTime == 24) {
+             contractAgreements[_idAgreement].seller.transfer(contractAgreements[_idAgreement].dailyPayment);
+             updateLatestPaidTime(_idAgreement);
+         } 
+         else {
+             uint sellerPayment = mul(_onlineTime, div(contractAgreements[_idAgreement].dailyPayment,24));
+             uint buyerPayment = sub(contractAgreements[_idAgreement].dailyPayment, sellerPayment);
+
+             contractAgreements[_idAgreement].seller.transfer(sellerPayment);
+             contractAgreements[_idAgreement].buyer.transfer(buyerPayment);
+
+             updateLatestPaidTime(_idAgreement)
+             
+         }
+     }
+
+  }
+
+
 
 
 }
